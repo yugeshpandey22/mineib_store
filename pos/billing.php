@@ -1,0 +1,312 @@
+<?php
+require_once '../includes/db.php';
+require_once '../includes/auth.php';
+
+requireLogin();
+
+define('BASE_URL', '/storemanagement');
+$page_title = 'Create Order';
+
+// Fetch all products
+$stmt = $pdo->query("SELECT * FROM products ORDER BY name ASC");
+$products = $stmt->fetchAll();
+
+// Fetch all customers for phone number autocomplete or selection if needed
+$stmt = $pdo->query("SELECT * FROM customers ORDER BY name ASC");
+$customers = $stmt->fetchAll();
+
+require_once '../includes/header.php';
+require_once '../includes/sidebar.php';
+require_once '../includes/navbar.php';
+?>
+
+<div style="max-width: 1000px; margin: auto;">
+
+    <!-- Alert Container -->
+    <div id="alert-container"></div>
+
+    <!-- Top Card: Add Item Form -->
+    <div class="card" style="display: block; margin-bottom: 20px; border-radius: 4px; padding: 0;">
+        <div style="padding: 15px 20px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; background: #fdfdfd;">
+            <h4 style="margin: 0; color: #333; font-weight: 600; font-size: 18px;">Create Order</h4>
+            <a href="../orders/index.php" style="background: #dc3545; color: white; padding: 6px 15px; border-radius: 4px; text-decoration: none; font-size: 14px;">Back</a>
+        </div>
+        <div style="padding: 20px; display: flex; gap: 20px; align-items: flex-end;">
+            <div style="flex: 2;">
+                <label style="display: block; font-size: 13px; color: #555; margin-bottom: 5px;">Product</label>
+                <select id="product_select" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+                    <option value="">-- Select Product --</option>
+                    <?php foreach($products as $prod): ?>
+                        <option value="<?php echo $prod['id']; ?>" data-name="<?php echo htmlspecialchars($prod['name']); ?>" data-price="<?php echo $prod['selling_price']; ?>" data-stock="<?php echo $prod['stock_quantity']; ?>">
+                            <?php echo htmlspecialchars($prod['name']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div style="flex: 1;">
+                <label style="display: block; font-size: 13px; color: #555; margin-bottom: 5px;">Quantity</label>
+                <input type="number" id="qty_input" value="1" min="1" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+            </div>
+            <div style="flex: 1;">
+                <label style="display: block; font-size: 13px; color: #555; margin-bottom: 5px;">GST (%)</label>
+                <select id="item_gst" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+                    <option value="0">0%</option>
+                    <option value="5">5%</option>
+                    <option value="12">12%</option>
+                    <option value="18">18%</option>
+                    <option value="28">28%</option>
+                </select>
+            </div>
+            <div>
+                <button type="button" onclick="addItem()" style="background: #0d6efd; color: white; border: none; padding: 9px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">Add Item</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Card: Cart & Checkout -->
+    <div class="card" style="display: block; border-radius: 4px; padding: 0;">
+        <div style="padding: 15px 20px; border-bottom: 1px solid #ddd; background: #fdfdfd;">
+            <h4 style="margin: 0; color: #333; font-weight: 600; font-size: 18px;">Products</h4>
+        </div>
+        
+        <div style="padding: 0;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                <thead>
+                    <tr style="border-bottom: 1px solid #ddd; background: #fcfcfc;">
+                        <th style="padding: 12px 20px; color: #333; font-weight: 600;">ID</th>
+                        <th style="padding: 12px 20px; color: #333; font-weight: 600;">Product Name</th>
+                        <th style="padding: 12px 20px; color: #333; font-weight: 600;">Price</th>
+                        <th style="padding: 12px 20px; color: #333; font-weight: 600;">Quantity</th>
+                        <th style="padding: 12px 20px; color: #333; font-weight: 600;">GST</th>
+                        <th style="padding: 12px 20px; color: #333; font-weight: 600;">Total Price</th>
+                        <th style="padding: 12px 20px; color: #333; font-weight: 600;">Remove</th>
+                    </tr>
+                </thead>
+                <tbody id="cart-table-body">
+                    <tr>
+                        <td colspan="7" style="padding: 20px; text-align: center; color: #666; font-weight: 600;">No Items added</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Checkout Section -->
+        <div id="checkout-section" style="display: none; padding: 20px; border-top: 1px solid #ddd; background: #fff;">
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="display: block; font-size: 13px; color: #555; margin-bottom: 5px;">Payment Mode *</label>
+                    <select id="payment_method" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+                        <option value="Cash">Cash</option>
+                        <option value="Online">Online</option>
+                    </select>
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="display: block; font-size: 13px; color: #555; margin-bottom: 5px;">Customer Phone</label>
+                    <input type="text" id="customer_phone" placeholder="Phone Number" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <label style="display: block; font-size: 13px; color: #555; margin-bottom: 5px;">Customer Name</label>
+                    <input type="text" id="customer_name" placeholder="Name (Optional)" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <label style="display: block; font-size: 13px; color: #555; margin-bottom: 5px;">Email ID</label>
+                    <input type="email" id="customer_email" placeholder="Email (Optional)" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
+                </div>
+                <div style="flex: 1; min-width: 150px; display: flex; align-items: flex-end;">
+                    <button type="button" onclick="checkout()" style="width: 100%; background: #ffc107; color: #000; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 15px; font-weight: 600;">Proceed to Order</button>
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px; text-align: right; font-size: 16px; color: #666;">
+                Subtotal: <span id="sub-total-display">0</span><br>
+                GST Amount: <span id="gst-amount-display">0</span>
+            </div>
+            <div style="text-align: right; font-size: 20px; font-weight: 700; color: #333; margin-top: 5px; border-top: 1px dashed #ccc; padding-top: 10px; display: inline-block; float: right;">
+                Grand Total: <span id="grand-total-display">0</span>
+            </div>
+            <div style="clear: both;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+let cart = [];
+
+function showAlert(message, type = 'success') {
+    const alertBox = document.createElement('div');
+    const bgColor = type === 'success' ? '#d1e7dd' : '#f8d7da';
+    const textColor = type === 'success' ? '#0f5132' : '#842029';
+    const borderColor = type === 'success' ? '#badbcc' : '#f5c2c7';
+    
+    alertBox.style.cssText = `background-color: ${bgColor}; color: ${textColor}; border: 1px solid ${borderColor}; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;`;
+    alertBox.innerHTML = `
+        <span>${message}</span>
+        <span style="cursor: pointer; font-size: 20px; font-weight: bold; line-height: 1;" onclick="this.parentElement.remove()">×</span>
+    `;
+    
+    const container = document.getElementById('alert-container');
+    container.innerHTML = ''; // Clear previous
+    container.appendChild(alertBox);
+    
+    setTimeout(() => {
+        if(alertBox.parentElement) alertBox.remove();
+    }, 3000);
+}
+
+function addItem() {
+    const select = document.getElementById('product_select');
+    const qtyInput = document.getElementById('qty_input');
+    
+    if (select.value === '') {
+        showAlert('Please select a product first', 'error');
+        return;
+    }
+    
+    const id = select.value;
+    const option = select.options[select.selectedIndex];
+    const name = option.getAttribute('data-name');
+    const price = parseFloat(option.getAttribute('data-price'));
+    const stock = parseInt(option.getAttribute('data-stock'));
+    const gstRate = parseFloat(document.getElementById('item_gst').value) || 0;
+    let qty = parseInt(qtyInput.value);
+    
+    if (isNaN(qty) || qty < 1) {
+        qty = 1;
+    }
+    
+    let existing = cart.find(item => item.id === id);
+    if (existing) {
+        existing.qty += qty;
+        // Update gst rate in case it changed
+        existing.gst_rate = gstRate;
+    } else {
+        cart.push({ id, name, price, qty, stock, gst_rate: gstRate });
+    }
+    
+    showAlert(`Item Added ${name}`, 'success');
+    
+    // Reset inputs
+    select.value = '';
+    qtyInput.value = '1';
+    document.getElementById('item_gst').value = '0';
+    
+    renderCart();
+}
+
+function updateQty(id, change) {
+    let item = cart.find(i => i.id === id);
+    if (item) {
+        let newQty = item.qty + change;
+        if (newQty < 1) return;
+        
+        item.qty = newQty;
+        renderCart();
+    }
+}
+
+function removeItem(id) {
+    cart = cart.filter(item => item.id !== id);
+    renderCart();
+}
+
+function renderCart() {
+    const tbody = document.getElementById('cart-table-body');
+    const checkoutSection = document.getElementById('checkout-section');
+    
+    if (cart.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="padding: 20px; text-align: center; color: #666; font-weight: 600;">No Items added</td></tr>';
+        checkoutSection.style.display = 'none';
+        return;
+    }
+
+    let html = '';
+    
+    let subTotal = 0;
+    let totalGstAmount = 0;
+    
+    cart.forEach((item, index) => {
+        let sub = item.price * item.qty;
+        let itemGstAmount = (sub * item.gst_rate) / 100;
+        let itemTotal = sub + itemGstAmount;
+        
+        subTotal += sub;
+        totalGstAmount += itemGstAmount;
+        
+        html += `
+        <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 12px 20px;">${index + 1}</td>
+            <td style="padding: 12px 20px; display: flex; align-items: center; gap: 10px;">
+                ${item.name}
+            </td>
+            <td style="padding: 12px 20px;">${item.price}</td>
+            <td style="padding: 12px 20px;">
+                <div style="display: inline-flex; border: 1px solid #ccc; border-radius: 4px; overflow: hidden; background: #fff;">
+                    <button onclick="updateQty('${item.id}', -1)" style="border: none; background: #f8f9fa; padding: 5px 10px; cursor: pointer; border-right: 1px solid #ccc; font-weight: bold;">-</button>
+                    <input type="text" value="${item.qty}" readonly style="width: 40px; text-align: center; border: none; outline: none; background: white;">
+                    <button onclick="updateQty('${item.id}', 1)" style="border: none; background: #f8f9fa; padding: 5px 10px; cursor: pointer; border-left: 1px solid #ccc; font-weight: bold;">+</button>
+                </div>
+            </td>
+            <td style="padding: 12px 20px;">${item.gst_rate}% (₹${itemGstAmount.toFixed(2)})</td>
+            <td style="padding: 12px 20px; font-weight: 600;">${itemTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td style="padding: 12px 20px;">
+                <button onclick="removeItem('${item.id}')" style="background: #dc3545; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;">Remove</button>
+            </td>
+        </tr>
+        `;
+    });
+    
+    let grandTotal = subTotal + totalGstAmount;
+    
+    tbody.innerHTML = html;
+    document.getElementById('sub-total-display').innerText = subTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('gst-amount-display').innerText = totalGstAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('grand-total-display').innerText = grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    checkoutSection.style.display = 'block';
+}
+
+function checkout() {
+    if (cart.length === 0) {
+        showAlert("Cart is empty!", "error");
+        return;
+    }
+    
+    let paymentMode = document.getElementById('payment_method').value;
+    if(paymentMode === '') {
+        showAlert("Please select a payment mode!", "error");
+        return;
+    }
+
+    let customerPhone = document.getElementById('customer_phone').value;
+    let customerName = document.getElementById('customer_name').value;
+    let customerEmail = document.getElementById('customer_email').value;
+    
+    let data = {
+        customer_phone: customerPhone,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        payment_method: paymentMode,
+        items: cart,
+        discount: 0
+    };
+
+    fetch('checkout.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (res.success) {
+            window.location.href = 'receipt.php?id=' + res.order_id;
+        } else {
+            showAlert("Error: " + res.message, "error");
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showAlert("Checkout failed. Check console.", "error");
+    });
+}
+</script>
+
+<?php require_once '../includes/footer.php'; ?>
