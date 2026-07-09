@@ -33,11 +33,15 @@ require_once '../includes/navbar.php';
         </div>
         <div style="padding: 20px; display: flex; gap: 20px; align-items: flex-end;">
             <div style="flex: 2;">
-                <label style="display: block; font-size: 13px; color: #555; margin-bottom: 5px;">Product</label>
+                <label style="display: block; font-size: 13px; color: #555; margin-bottom: 5px;">Scan Barcode</label>
+                <input type="text" id="barcode_input" placeholder="Scan barcode here..." style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background: #e9ecef;" autofocus>
+            </div>
+            <div style="flex: 2;">
+                <label style="display: block; font-size: 13px; color: #555; margin-bottom: 5px;">Or Select Product</label>
                 <select id="product_select" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;">
                     <option value="">-- Select Product --</option>
                     <?php foreach($products as $prod): ?>
-                        <option value="<?php echo $prod['id']; ?>" data-name="<?php echo htmlspecialchars($prod['name']); ?>" data-price="<?php echo $prod['selling_price']; ?>" data-stock="<?php echo $prod['stock_quantity']; ?>">
+                        <option value="<?php echo $prod['id']; ?>" data-barcode="<?php echo htmlspecialchars($prod['barcode'] ?? ''); ?>" data-name="<?php echo htmlspecialchars($prod['name']); ?>" data-price="<?php echo $prod['selling_price']; ?>" data-stock="<?php echo $prod['stock_quantity']; ?>">
                             <?php echo htmlspecialchars($prod['name']); ?>
                         </option>
                     <?php endforeach; ?>
@@ -152,6 +156,35 @@ function showAlert(message, type = 'success') {
         if(alertBox.parentElement) alertBox.remove();
     }, 3000);
 }
+
+document.getElementById('barcode_input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const barcode = this.value.trim();
+        if (barcode === '') return;
+
+        const select = document.getElementById('product_select');
+        let found = false;
+        
+        for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].getAttribute('data-barcode') === barcode) {
+                select.selectedIndex = i;
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            addItem();
+        } else {
+            showAlert('Product with this barcode not found', 'error');
+        }
+        
+        // Clear input and refocus
+        this.value = '';
+        this.focus();
+    }
+});
 
 function addItem() {
     const select = document.getElementById('product_select');

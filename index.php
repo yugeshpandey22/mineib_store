@@ -79,18 +79,10 @@ session_start();
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
         }
 
-        /* No Overlay (Clean image) */
-        .hero-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: transparent;
-            z-index: 1;
-        }
+
 
         .hero-content {
             position: relative;
@@ -132,6 +124,33 @@ session_start();
             padding: 15px 0;
             font-size: 14px;
         }
+
+        /* Hover Footer Watermark */
+        .hover-footer {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 20vw;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.6); /* Clean, visible white */
+            text-shadow: 0px 10px 20px rgba(0, 0, 0, 0.5); /* Strong shadow so it stands out cleanly */
+            font-family: 'Open Sans', sans-serif;
+            letter-spacing: -4px;
+            transition: all 0.5s ease-in-out;
+            z-index: 1; /* Less than hero-content so button is clickable */
+            white-space: nowrap;
+            user-select: none;
+            cursor: default;
+            line-height: 1;
+            pointer-events: none; /* Do not block clicks */
+        }
+
+        .hero-section:hover .hover-footer {
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0px 15px 30px rgba(0, 0, 0, 0.7);
+            bottom: -10px;
+        }
     </style>
 </head>
 <body>
@@ -151,7 +170,7 @@ session_start();
 
     <!-- Hero Section -->
     <section class="hero-section">
-        <div class="hero-overlay"></div>
+
         <div class="hero-content">
             <h1>Store Management System</h1>
             <?php if(isset($_SESSION['user_id'])): ?>
@@ -159,6 +178,11 @@ session_start();
             <?php else: ?>
                 <a href="login.php" class="btn-login-primary">Login Now</a>
             <?php endif; ?>
+        </div>
+        
+        <!-- Hover Footer Watermark -->
+        <div class="hover-footer">
+            amadika
         </div>
     </section>
 

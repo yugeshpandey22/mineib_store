@@ -11,6 +11,10 @@ body {
     display: flex;
     min-height: 100vh;
 }
+html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+}
 
 /* Sidebar */
 .sidebar {
@@ -38,6 +42,14 @@ body {
 .sidebar-brand i {
     color: #e5b340; /* Gold Icon */
     font-size: 28px;
+}
+.sidebar-menu-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+.scroll-arrow {
+    display: none;
 }
 .sidebar-menu {
     list-style: none;
@@ -479,4 +491,115 @@ body {
     padding: 6px 12px;
     font-size: 12px;
     border-radius: 6px;
+}
+
+/* Responsive Design for Mobile and Tablets */
+@media (max-width: 1024px) {
+    .amadika-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .dashboard-charts {
+        grid-template-columns: 1fr;
+    }
+    .dashboard-bottom {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+        overflow-x: hidden;
+    }
+    .sidebar {
+        width: 100%;
+        padding: 15px;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .sidebar-brand {
+        margin: 0;
+        padding: 0;
+        border: none;
+    }
+    .sidebar-menu-container {
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        margin-top: 15px;
+        min-width: 0;
+    }
+    .scroll-arrow {
+        display: flex !important;
+        background: #0d6efd;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        width: 32px;
+        height: 32px;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .left-arrow { margin-right: 5px; }
+    .right-arrow { margin-left: 5px; }
+    .sidebar-menu {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        flex: 1;
+        margin-top: 0;
+        padding-bottom: 5px;
+        scroll-behavior: smooth;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
+        min-width: 0;
+    }
+    .sidebar-menu::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
+    }
+    .sidebar-menu li {
+        margin: 0;
+        padding: 0;
+        white-space: nowrap;
+    }
+    .sidebar-user {
+        display: none;
+    }
+    .main-content {
+        padding: 15px;
+        height: auto;
+    }
+    .top-navbar {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+    .nav-search {
+        width: 100%;
+    }
+    .nav-actions {
+        justify-content: space-between;
+    }
+    .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    .panel-card {
+        overflow-x: auto;
+    }
+}
+
+@media (max-width: 576px) {
+    .amadika-cards {
+        grid-template-columns: 1fr;
+    }
+    .amadika-card {
+        grid-column: span 1 !important;
+    }
 }

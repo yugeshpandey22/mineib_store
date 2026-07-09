@@ -1,6 +1,6 @@
 <?php
 // includes/footer.php
 ?>
-    </main> <!-- End Main Content -->
+        </main> <!-- End Main Content -->
 </body>
 </html>

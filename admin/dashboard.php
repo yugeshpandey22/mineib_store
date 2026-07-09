@@ -7,19 +7,37 @@ requireLogin(); // Protect this page
 $username = $_SESSION['username'];
 $role = $_SESSION['role'];
 
-// Fetch real dynamic stats
+// Today's Stats & Trends
 $today = date('Y-m-d');
-$today_sales = (float)($pdo->query("SELECT SUM(grand_total) FROM orders WHERE DATE(created_at) = '$today'")->fetchColumn() ?: 0);
-$total_invoices = (int)($pdo->query("SELECT COUNT(id) FROM orders")->fetchColumn() ?: 0);
-$total_products = (int)($pdo->query("SELECT COUNT(id) FROM products")->fetchColumn() ?: 0);
-$total_customers = (int)($pdo->query("SELECT COUNT(id) FROM customers")->fetchColumn() ?: 0);
+$yesterday = date('Y-m-d', strtotime('-1 day'));
 
-// NEW DYNAMIC STATS
+$today_sales = (float)($pdo->query("SELECT SUM(grand_total) FROM orders WHERE DATE(created_at) = '$today'")->fetchColumn() ?: 0);
+$yesterday_sales = (float)($pdo->query("SELECT SUM(grand_total) FROM orders WHERE DATE(created_at) = '$yesterday'")->fetchColumn() ?: 0);
+$sales_trend = $yesterday_sales > 0 ? (($today_sales - $yesterday_sales) / $yesterday_sales) * 100 : ($today_sales > 0 ? 100 : 0);
+
+$today_orders = (int)($pdo->query("SELECT COUNT(id) FROM orders WHERE DATE(created_at) = '$today'")->fetchColumn() ?: 0);
+$yesterday_orders = (int)($pdo->query("SELECT COUNT(id) FROM orders WHERE DATE(created_at) = '$yesterday'")->fetchColumn() ?: 0);
+$orders_trend = $yesterday_orders > 0 ? (($today_orders - $yesterday_orders) / $yesterday_orders) * 100 : ($today_orders > 0 ? 100 : 0);
+
+$total_products = (int)($pdo->query("SELECT COUNT(id) FROM products")->fetchColumn() ?: 0);
+$low_stock_count = (int)($pdo->query("SELECT COUNT(id) FROM products WHERE stock_quantity <= 5")->fetchColumn() ?: 0);
+
+// Monthly Stats & Trends
 $month = date('m');
 $year = date('Y');
+$last_month = date('m', strtotime('-1 month'));
+$last_month_year = date('Y', strtotime('-1 month'));
+
 $monthly_sales = (float)($pdo->query("SELECT SUM(grand_total) FROM orders WHERE MONTH(created_at) = '$month' AND YEAR(created_at) = '$year'")->fetchColumn() ?: 0);
+$last_monthly_sales = (float)($pdo->query("SELECT SUM(grand_total) FROM orders WHERE MONTH(created_at) = '$last_month' AND YEAR(created_at) = '$last_month_year'")->fetchColumn() ?: 0);
+$monthly_sales_trend = $last_monthly_sales > 0 ? (($monthly_sales - $last_monthly_sales) / $last_monthly_sales) * 100 : ($monthly_sales > 0 ? 100 : 0);
+
 $monthly_purchases = (float)($pdo->query("SELECT SUM(total_amount) FROM purchases WHERE MONTH(created_at) = '$month' AND YEAR(created_at) = '$year'")->fetchColumn() ?: 0);
 $profit = $monthly_sales - $monthly_purchases;
+
+// Sales Target (Power BI Style Goal)
+$monthly_target = 500000; // 5 Lakh Target
+$target_percent = min(($monthly_sales / $monthly_target) * 100, 100);
 
 // Chart Data (Past 7 Days Sales)
 $sales_labels = [];
@@ -49,8 +67,9 @@ if(empty($cat_labels)) {
 
 // Bottom Grid Data
 $recent_orders = $pdo->query("SELECT o.id, o.grand_total, o.created_at, c.name as customer_name FROM orders o LEFT JOIN customers c ON o.customer_id = c.id ORDER BY o.id DESC LIMIT 4")->fetchAll();
-$low_stock = $pdo->query("SELECT name, stock_quantity FROM products WHERE stock_quantity <= 5 ORDER BY stock_quantity ASC LIMIT 3")->fetchAll();
-$recent_customers = $pdo->query("SELECT name, created_at FROM customers ORDER BY id DESC LIMIT 3")->fetchAll();
+$low_stock = $pdo->query("SELECT name, stock_quantity FROM products WHERE stock_quantity <= 5 ORDER BY stock_quantity ASC LIMIT 4")->fetchAll();
+$top_products = $pdo->query("SELECT p.name, SUM(oi.quantity) as qty_sold FROM order_items oi JOIN products p ON oi.product_id = p.id JOIN orders o ON oi.order_id = o.id WHERE MONTH(o.created_at) = MONTH(CURRENT_DATE()) AND YEAR(o.created_at) = YEAR(CURRENT_DATE()) GROUP BY p.id ORDER BY qty_sold DESC LIMIT 4")->fetchAll();
+$max_qty = !empty($top_products) ? max(array_column($top_products, 'qty_sold')) : 1;
 
 define('BASE_URL', '/storemanagement');
 $page_title = 'Dashboard';
@@ -74,64 +93,82 @@ require_once '../includes/navbar.php';
             <!-- Row 1 -->
             <div class="amadika-card">
                 <div class="ac-icon bg-c-blue"><i class="fas fa-wallet"></i></div>
-                <div class="ac-details">
+                <div class="ac-details" style="width: 100%;">
                     <div class="ac-title">Today's Sales</div>
                     <div class="ac-value">₹ <?php echo number_format($today_sales, 2); ?></div>
-                    <div class="ac-change"><span class="text-up">↑ 12.5%</span> vs yesterday</div>
+                    <div class="ac-change">
+                        <span class="<?php echo $sales_trend >= 0 ? 'text-up' : 'text-down'; ?>">
+                            <?php echo $sales_trend >= 0 ? '↑' : '↓'; ?> <?php echo number_format(abs($sales_trend), 1); ?>%
+                        </span> vs yesterday
+                    </div>
                 </div>
             </div>
             <div class="amadika-card">
-                <div class="ac-icon bg-c-green"><i class="fas fa-file-invoice"></i></div>
-                <div class="ac-details">
-                    <div class="ac-title">Total Orders</div>
-                    <div class="ac-value"><?php echo $total_invoices; ?></div>
-                    <div class="ac-change"><span class="text-up">↑ 8.2%</span> vs yesterday</div>
+                <div class="ac-icon bg-c-green"><i class="fas fa-shopping-bag"></i></div>
+                <div class="ac-details" style="width: 100%;">
+                    <div class="ac-title">Today's Orders</div>
+                    <div class="ac-value"><?php echo $today_orders; ?></div>
+                    <div class="ac-change">
+                        <span class="<?php echo $orders_trend >= 0 ? 'text-up' : 'text-down'; ?>">
+                            <?php echo $orders_trend >= 0 ? '↑' : '↓'; ?> <?php echo number_format(abs($orders_trend), 1); ?>%
+                        </span> vs yesterday
+                    </div>
                 </div>
             </div>
             <div class="amadika-card">
-                <div class="ac-icon bg-c-purple"><i class="fas fa-users"></i></div>
-                <div class="ac-details">
-                    <div class="ac-title">Total Customers</div>
-                    <div class="ac-value"><?php echo $total_customers; ?></div>
-                    <div class="ac-change"><span class="text-up">↑ 5.7%</span> vs yesterday</div>
-                </div>
-            </div>
-            <div class="amadika-card">
-                <div class="ac-icon bg-c-orange"><i class="fas fa-box"></i></div>
-                <div class="ac-details">
+                <div class="ac-icon bg-c-purple"><i class="fas fa-box"></i></div>
+                <div class="ac-details" style="width: 100%;">
                     <div class="ac-title">Total Products</div>
                     <div class="ac-value"><?php echo $total_products; ?></div>
-                    <div class="ac-change"><span class="text-up">↑ 3.3%</span> vs yesterday</div>
+                    <div class="ac-change"><span style="color: #8f9bba;">Active in inventory</span></div>
+                </div>
+            </div>
+            <div class="amadika-card">
+                <div class="ac-icon bg-c-red"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="ac-details" style="width: 100%;">
+                    <div class="ac-title">Low Stock Items</div>
+                    <div class="ac-value"><?php echo $low_stock_count; ?></div>
+                    <div class="ac-change"><span class="text-down">Requires Attention</span></div>
                 </div>
             </div>
             
             <!-- Row 2 (Dynamic Monthly Data) -->
-            <div class="amadika-card">
-                <div class="ac-icon bg-c-red"><i class="fas fa-chart-bar"></i></div>
-                <div class="ac-details">
-                    <div class="ac-title">Monthly Sales</div>
+            <div class="amadika-card" style="grid-column: span 2;">
+                <div class="ac-icon bg-c-orange"><i class="fas fa-chart-bar"></i></div>
+                <div class="ac-details" style="width: 100%;">
+                    <div class="ac-title" style="display: flex; justify-content: space-between;">
+                        <span>Monthly Sales</span>
+                        <span class="<?php echo $monthly_sales_trend >= 0 ? 'text-up' : 'text-down'; ?>" style="font-size: 11px;">
+                            <?php echo $monthly_sales_trend >= 0 ? '↑' : '↓'; ?> <?php echo number_format(abs($monthly_sales_trend), 1); ?>% vs last month
+                        </span>
+                    </div>
                     <div class="ac-value">₹ <?php echo number_format($monthly_sales, 2); ?></div>
-                    <div class="ac-change"><span class="text-up">This Month</span></div>
-                </div>
-            </div>
-            <div class="amadika-card">
-                <div class="ac-icon bg-c-yellow"><i class="fas fa-shopping-cart"></i></div>
-                <div class="ac-details">
-                    <div class="ac-title">Purchase Amount</div>
-                    <div class="ac-value">₹ <?php echo number_format($monthly_purchases, 2); ?></div>
-                    <div class="ac-change"><span class="text-up">This Month</span></div>
+                    <div style="margin-top: 10px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; color: #8f9bba; font-weight: 600;">
+                            <span>Target: ₹<?php echo number_format($monthly_target); ?></span>
+                            <span><?php echo number_format($target_percent, 1); ?>%</span>
+                        </div>
+                        <div style="width: 100%; background: #e0e5f2; height: 6px; border-radius: 3px; overflow: hidden;">
+                            <div style="width: <?php echo $target_percent; ?>%; background: <?php echo $target_percent >= 100 ? '#05cd99' : '#0d6efd'; ?>; height: 100%; border-radius: 3px;"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="amadika-card">
                 <div class="ac-icon bg-c-teal"><i class="fas fa-chart-line"></i></div>
-                <div class="ac-details">
-                    <div class="ac-title">Profit</div>
+                <div class="ac-details" style="width: 100%;">
+                    <div class="ac-title">Monthly Profit</div>
                     <div class="ac-value" style="color: <?php echo $profit >= 0 ? 'inherit' : '#ff4b4b'; ?>">₹ <?php echo number_format($profit, 2); ?></div>
-                    <div class="ac-change"><span class="text-up">This Month</span></div>
+                    <div class="ac-change"><span class="text-up">Gross Profit</span></div>
                 </div>
             </div>
-            <div class="amadika-card" style="visibility: hidden;">
-                <!-- Hidden expenses card as no expenses table exists -->
+            <div class="amadika-card">
+                <div class="ac-icon bg-c-yellow"><i class="fas fa-shopping-cart"></i></div>
+                <div class="ac-details" style="width: 100%;">
+                    <div class="ac-title">Purchase Amount</div>
+                    <div class="ac-value">₹ <?php echo number_format($monthly_purchases, 2); ?></div>
+                    <div class="ac-change"><span class="text-up">Total Cost</span></div>
+                </div>
             </div>
         </div>
 
@@ -219,22 +256,26 @@ require_once '../includes/navbar.php';
 
             <div class="panel-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="font-size: 16px; color: #111c43;">Recent Customers</h3>
-                    <div style="font-size: 12px; color: #0d6efd; border: 1px solid #0d6efd; padding: 3px 10px; border-radius: 4px; cursor: pointer;">View All</div>
+                    <h3 style="font-size: 16px; color: #111c43;">Top Selling Products</h3>
+                    <div style="font-size: 12px; color: #8f9bba;">This Month</div>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 15px;">
-                    <?php if(count($recent_customers) > 0): ?>
-                        <?php foreach($recent_customers as $rc): ?>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($rc['name']); ?>&background=random" style="width: 35px; height: 35px; border-radius: 50%;">
-                                <span style="font-size: 13px; font-weight: 600; color: #2b3674;"><?php echo htmlspecialchars($rc['name']); ?></span>
+                    <?php if(count($top_products) > 0): ?>
+                        <?php foreach($top_products as $tp): 
+                            $percent = ($tp['qty_sold'] / $max_qty) * 100;
+                        ?>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #2b3674; margin-bottom: 6px;">
+                                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;" title="<?php echo htmlspecialchars($tp['name']); ?>"><?php echo htmlspecialchars($tp['name']); ?></span>
+                                <span style="color: #0d6efd;"><?php echo $tp['qty_sold']; ?> sold</span>
                             </div>
-                            <span style="font-size: 11px; color: #8f9bba;"><?php echo date('d M Y', strtotime($rc['created_at'])); ?></span>
+                            <div style="width: 100%; background: #e0e5f2; height: 8px; border-radius: 4px; overflow: hidden;">
+                                <div style="width: <?php echo $percent; ?>%; background: linear-gradient(90deg, #0d6efd, #00d2ff); height: 100%; border-radius: 4px;"></div>
+                            </div>
                         </div>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <div style="text-align: center; color: #888; padding: 10px;">No customers found.</div>
+                        <div style="text-align: center; color: #888; padding: 10px;">No sales data yet.</div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -298,6 +339,8 @@ require_once '../includes/navbar.php';
             }
         }
     });
+
+
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

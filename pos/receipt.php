@@ -2,8 +2,7 @@
 require_once '../includes/db.php';
 require_once '../includes/auth.php';
 
-requireLogin();
-
+// Removed requireLogin() so customers can view their receipt via WhatsApp link
 if (!isset($_GET['id'])) {
     header("Location: billing.php");
     exit;
@@ -28,7 +27,7 @@ if (!$order) {
 
 // Fetch order items
 $stmt = $pdo->prepare("
-    SELECT oi.*, p.name as product_name
+    SELECT oi.*, p.name as product_name, p.return_policy
     FROM order_items oi
     JOIN products p ON oi.product_id = p.id
     WHERE oi.order_id = ?
@@ -249,12 +248,36 @@ $phone = $settings['phone'] ?? '';
 </head>
 <body>
 
+    <?php
+    $inv_no = 'ORD-' . str_pad($order['id'], 6, '0', STR_PAD_LEFT);
+    $total = number_format($order['grand_total'], 2);
+    
+    // Generate full link to this receipt
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+    $receipt_link = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+    
+    $wa_msg = "Hello! Thank you for shopping with *$store_name*.\n\nYour Receipt *$inv_no* is ready.\nTotal Amount: *₹$total*\n\nClick the link below to view/download your PDF bill:\n$receipt_link\n\nHave a great day!";
+    $wa_msg_encoded = urlencode($wa_msg);
+    $wa_phone = $order['customer_phone'] ? preg_replace('/[^0-9]/', '', $order['customer_phone']) : '';
+    if($wa_phone && strlen($wa_phone) == 10) {
+        $wa_phone = '91' . $wa_phone;
+    }
+    $wa_link = "https://wa.me/{$wa_phone}?text={$wa_msg_encoded}";
+    ?>
+
     <div class="receipt-container">
         <!-- Action Buttons (Hidden in print) -->
         <div class="actions">
-            <a href="../orders/index.php" class="btn btn-save"><i class="fas fa-arrow-left"></i> Back to Orders</a>
+            <?php if (isLoggedIn()): ?>
+                <a href="../orders/index.php" class="btn btn-save"><i class="fas fa-arrow-left"></i> Back to Orders</a>
+            <?php endif; ?>
+            
             <button class="btn btn-print" onclick="window.print()"><i class="fas fa-print"></i> Print Bill</button>
             <button class="btn btn-pdf" onclick="downloadPDF()"><i class="fas fa-download"></i> Download PDF</button>
+            
+            <?php if (isLoggedIn()): ?>
+                <a href="<?php echo $wa_link; ?>" target="_blank" class="btn" style="background: #25D366; color: white;"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+            <?php endif; ?>
         </div>
 
         <!-- The Receipt -->
@@ -324,6 +347,9 @@ $phone = $settings['phone'] ?? '';
                         <td>
                             <?php echo htmlspecialchars($item['product_name']); ?><br>
                             <small style="color: #666;">@ ₹<?php echo number_format($item['unit_price'], 2); ?></small>
+                            <?php if(!empty($item['return_policy'])): ?>
+                                <br><small style="color: #444; font-size: 10px; font-weight: bold;">(<?php echo htmlspecialchars($item['return_policy']); ?>)</small>
+                            <?php endif; ?>
                         </td>
                         <td style="text-align: center;"><?php echo $item['quantity']; ?></td>
                         <td style="text-align: right; font-size: 11px;">

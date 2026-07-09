@@ -72,6 +72,9 @@ require_once '../includes/navbar.php';
             <div style="margin-bottom: 20px;">
                 <p style="font-size: 14px; color: #8f9bba; margin-bottom: 5px;">Purchase Price: <strong>₹<?php echo number_format($product['purchase_price'], 2); ?></strong></p>
                 <p style="font-size: 14px; color: #8f9bba; margin-bottom: 5px;">Added On: <strong><?php echo date('d M Y', strtotime($product['created_at'])); ?></strong></p>
+                <?php if($product['return_policy']): ?>
+                <p style="font-size: 14px; color: #8f9bba; margin-bottom: 5px; margin-top: 5px;">Return Policy: <strong style="color: #ff9800;"><i class="fas fa-undo-alt"></i> <?php echo htmlspecialchars($product['return_policy']); ?></strong></p>
+                <?php endif; ?>
             </div>
             
             <?php if($product['description']): ?>

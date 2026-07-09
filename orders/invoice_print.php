@@ -27,7 +27,7 @@ if (!$order) {
 
 // Fetch order items
 $stmt = $pdo->prepare("
-    SELECT oi.*, p.name as product_name
+    SELECT oi.*, p.name as product_name, p.return_policy
     FROM order_items oi
     JOIN products p ON oi.product_id = p.id
     WHERE oi.order_id = ?
@@ -213,7 +213,12 @@ $items = $stmt->fetchAll();
                 <?php $i = 1; foreach($items as $item): ?>
                 <tr>
                     <td><?php echo $i++; ?></td>
-                    <td><?php echo htmlspecialchars($item['product_name']); ?></td>
+                    <td>
+                        <?php echo htmlspecialchars($item['product_name']); ?>
+                        <?php if(!empty($item['return_policy'])): ?>
+                            <br><small style="color: #666; font-size: 11px;"><i class="fas fa-undo-alt" style="font-size: 10px;"></i> <?php echo htmlspecialchars($item['return_policy']); ?></small>
+                        <?php endif; ?>
+                    </td>
                     <td style="text-align: center;"><?php echo $item['quantity']; ?></td>
                     <td style="text-align: right;">₹<?php echo number_format($item['unit_price'], 2); ?></td>
                     <td style="text-align: right;">₹<?php echo number_format($item['subtotal'], 2); ?></td>
@@ -249,10 +254,29 @@ $items = $stmt->fetchAll();
     <!-- Include html2pdf library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+    <?php
+    $store = 'mineib'; // Or use settings if available
+    $inv_no = 'INV-' . str_pad($order['id'], 5, '0', STR_PAD_LEFT);
+    $total = number_format($order['grand_total'], 2);
+    
+    // Generate full link to this invoice
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+    $invoice_link = $protocol . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+    
+    $wa_msg = "Hello! Thank you for shopping with *$store*.\n\nYour Invoice *$inv_no* is ready.\nTotal Amount: *₹$total*\n\nClick the link below to view/download your PDF bill:\n$invoice_link\n\nHave a great day!";
+    $wa_msg_encoded = urlencode($wa_msg);
+    $wa_phone = $order['customer_phone'] ? preg_replace('/[^0-9]/', '', $order['customer_phone']) : '';
+    if($wa_phone && strlen($wa_phone) == 10) {
+        $wa_phone = '91' . $wa_phone;
+    }
+    $wa_link = "https://wa.me/{$wa_phone}?text={$wa_msg_encoded}";
+    ?>
+
     <div style="text-align: center; margin: 30px auto; max-width: 800px;" class="actions-container">
         <a href="index.php" class="btn" style="background: #0d6efd; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: 600; margin: 0 5px; display: inline-block;">Save</a>
         <button class="btn" style="background: #dc3545; color: white; padding: 12px 25px; border: none; border-radius: 5px; font-weight: 600; margin: 0 5px; cursor: pointer;" onclick="window.print()"><i class="fas fa-file-alt"></i> Print</button>
         <button class="btn" style="background: #ffc107; color: #000; padding: 12px 25px; border: none; border-radius: 5px; font-weight: 600; margin: 0 5px; cursor: pointer;" onclick="downloadPDF()"><i class="fas fa-file-pdf"></i> Download PDF</button>
+        <a href="<?php echo $wa_link; ?>" target="_blank" class="btn" style="background: #25D366; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: 600; margin: 0 5px; display: inline-block;"><i class="fab fa-whatsapp"></i> WhatsApp</a>
     </div>
 
     <style>

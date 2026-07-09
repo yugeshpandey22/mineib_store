@@ -31,11 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("INSERT INTO purchases (supplier_id, user_id, total_amount) VALUES (?, ?, ?)");
             $stmt->execute([$supplier_id, $user_id, $total_amount]);
             $purchase_id = $pdo->lastInsertId();
-
             // Insert Purchase Item
             $stmt = $pdo->prepare("INSERT INTO purchase_items (purchase_id, product_id, quantity, unit_cost, subtotal) VALUES (?, ?, ?, ?, ?)");
             $stmt->execute([$purchase_id, $product_id, $quantity, $unit_cost, $total_amount]);
-
             // UPDATE INVENTORY
             $stmt = $pdo->prepare("UPDATE products SET stock_quantity = stock_quantity + ?, purchase_price = ? WHERE id = ?");
             $stmt->execute([$quantity, $unit_cost, $product_id]);

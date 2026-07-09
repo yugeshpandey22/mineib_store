@@ -9,7 +9,7 @@ function requireLogin() {
     if (!isLoggedIn()) {
         $base = defined('BASE_URL') ? BASE_URL : '/storemanagement';
         header("Location: " . $base . "/login.php");
-        exit;
+        exit; 
     }
 }
 

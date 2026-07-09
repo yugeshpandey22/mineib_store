@@ -36,6 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $purchase_price = $_POST['purchase_price'] ?? 0;
     $selling_price = $_POST['selling_price'] ?? 0;
     $stock_quantity = $_POST['stock_quantity'] ?? 0;
+    $return_policy = trim($_POST['return_policy'] ?? '');
+    $barcode = trim($_POST['barcode'] ?? '');
     
     $image_url = $product['image_url'];
 
@@ -68,9 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$error) {
             try {
-                $stmt = $pdo->prepare("UPDATE products SET category_id = ?, name = ?, description = ?, purchase_price = ?, selling_price = ?, stock_quantity = ?, image_url = ? WHERE id = ?");
-                $stmt->execute([$category_id, $name, $description, $purchase_price, $selling_price, $stock_quantity, $image_url, $id]);
-                header("Location: index.php?msg=success");
+                $stmt = $pdo->prepare("UPDATE products SET category_id = ?, name = ?, barcode = ?, description = ?, return_policy = ?, purchase_price = ?, selling_price = ?, stock_quantity = ?, image_url = ? WHERE id = ?");
+                $stmt->execute([$category_id, $name, $barcode, $description, $return_policy, $purchase_price, $selling_price, $stock_quantity, $image_url, $id]);
+                header("Location: index.php?msg=updated");
                 exit;
             } catch (PDOException $e) {
                 $error = 'Error saving product: ' . $e->getMessage();
@@ -99,6 +101,10 @@ require_once '../includes/navbar.php';
             <div>
                 <label for="name" style="display: block; font-weight: 600; margin-bottom: 5px;">Product Name *</label>
                 <input type="text" name="name" id="name" value="<?php echo htmlspecialchars($product['name']); ?>" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+            <div>
+                <label for="barcode" style="display: block; font-weight: 600; margin-bottom: 5px;">Barcode</label>
+                <input type="text" name="barcode" id="barcode" value="<?php echo htmlspecialchars($product['barcode'] ?? ''); ?>" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
             </div>
             <div>
                 <label for="category_id" style="display: block; font-weight: 600; margin-bottom: 5px;">Category *</label>
@@ -139,6 +145,11 @@ require_once '../includes/navbar.php';
         <div style="margin-bottom: 20px;">
             <label for="description" style="display: block; font-weight: 600; margin-bottom: 5px;">Product Description</label>
             <textarea name="description" id="description" rows="4" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"><?php echo htmlspecialchars($product['description']); ?></textarea>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label for="return_policy" style="display: block; font-weight: 600; margin-bottom: 5px;">Return & Refund Policy</label>
+            <input type="text" name="return_policy" id="return_policy" value="<?php echo htmlspecialchars($product['return_policy'] ?? ''); ?>" placeholder="e.g. 7 Days Replacement, No Return" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
         </div>
 
         <button type="submit" class="btn-submit" style="padding: 10px 20px; background: #0072ff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">Update Product</button>
