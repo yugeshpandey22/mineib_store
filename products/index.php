@@ -8,12 +8,7 @@ define('BASE_URL', '/storemanagement');
 $page_title = 'Manage Products';
 
 // Fetch products with their category names
-$stmt = $pdo->query("
-    SELECT p.*, c.name as category_name 
-    FROM products p 
-    LEFT JOIN categories c ON p.category_id = c.id 
-    ORDER BY p.name ASC
-");
+$stmt = $pdo->query("SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY p.name ASC");
 $products = $stmt->fetchAll();
 
 require_once '../includes/header.php';
@@ -24,6 +19,7 @@ require_once '../includes/navbar.php';
 <div class="content-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2>Products</h2>
     <div>
+        <a href="generate_barcodes.php" class="btn" style="background: #28a745; color: white; margin-right: 10px;" onclick="return confirm('Generate missing barcodes for all products?');"><i class="fas fa-barcode"></i> Generate Barcodes</a>
         <a href="print_all_barcodes.php" class="btn" style="background: #17a2b8; color: white; margin-right: 10px;"><i class="fas fa-print"></i> Print All Barcodes</a>
         <a href="import.php" class="btn" style="background: #111c43; color: white; margin-right: 10px;"><i class="fas fa-file-csv"></i> Import CSV</a>
         <a href="add.php" class="btn btn-primary"><i class="fas fa-plus"></i> Add Product</a>
@@ -48,7 +44,7 @@ require_once '../includes/navbar.php';
         <table class="custom-table">
             <thead>
                 <tr>
-                    <th>ID</th>
+                    <th>S.No.</th>
                     <th>Product Name</th>
                     <th>Barcode</th>
                     <th>Category</th>
@@ -60,14 +56,21 @@ require_once '../includes/navbar.php';
             </thead>
             <tbody>
                 <?php if (count($products) > 0): ?>
-                    <?php foreach ($products as $prod): ?>
+                    <?php $sn = 1; foreach ($products as $prod): ?>
                         <tr>
-                            <td>#<?php echo $prod['id']; ?></td>
-                            <td style="font-weight: 600;">
+                            <td>#<?php echo $sn++; ?></td>
+                            <td style="font-weight: 600; display: flex; align-items: center;">
                                 <?php if($prod['image_url']): ?>
                                     <img src="../uploads/products/<?php echo htmlspecialchars($prod['image_url']); ?>" alt="" style="width: 40px; height: 40px; object-fit: cover; border-radius: 5px; vertical-align: middle; margin-right: 10px;">
                                 <?php endif; ?>
-                                <?php echo htmlspecialchars($prod['name']); ?>
+                                <div>
+                                    <?php echo htmlspecialchars($prod['name']); ?>
+                                    <?php if($prod['color'] || $prod['size']): ?>
+                                        <div style="font-size: 11px; color: #888; font-weight: 400; margin-top: 2px;">
+                                            <?php echo htmlspecialchars(implode(', ', array_filter([$prod['color'], $prod['size']]))); ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
                             </td>
                             <td><?php echo htmlspecialchars($prod['barcode'] ?: '-'); ?></td>
                             <td><span class="badge badge-primary"><?php echo htmlspecialchars($prod['category_name'] ?: 'None'); ?></span></td>

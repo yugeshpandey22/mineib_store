@@ -47,9 +47,10 @@ require_once '../includes/navbar.php';
             </thead>
             <tbody>
                 <?php if (count($categories) > 0): ?>
+                    <?php $i = 1; ?>
                     <?php foreach ($categories as $cat): ?>
                         <tr>
-                            <td>#<?php echo $cat['id']; ?></td>
+                            <td>#<?php echo $i++; ?></td>
                             <td style="font-weight: 600;"><?php echo htmlspecialchars($cat['name']); ?></td>
                             <td style="color: #666;"><?php echo htmlspecialchars($cat['description']); ?></td>
                             <td>

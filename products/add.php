@@ -21,6 +21,9 @@
         $stock_quantity = $_POST['stock_quantity'] ?? 0;
         $return_policy = trim($_POST['return_policy'] ?? '');
         $barcode = trim($_POST['barcode'] ?? '');
+        $hsn = trim($_POST['hsn'] ?? '');
+        $color = trim($_POST['color'] ?? '');
+        $size = trim($_POST['size'] ?? '');
 
         $image_url = null;
 
@@ -49,8 +52,8 @@
 
             if (!$error) {
                 try {
-                    $stmt = $pdo->prepare("INSERT INTO products (category_id, name, barcode, description, return_policy, purchase_price, selling_price, stock_quantity, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$category_id, $name, $barcode, $description, $return_policy, $purchase_price, $selling_price, $stock_quantity, $image_url]);
+                    $stmt = $pdo->prepare("INSERT INTO products (category_id, name, hsn, color, size, barcode, description, return_policy, purchase_price, selling_price, stock_quantity, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$category_id, $name, $hsn, $color, $size, $barcode, $description, $return_policy, $purchase_price, $selling_price, $stock_quantity, $image_url]);
                     header("Location: index.php?msg=success");
                     exit;
                 } catch (PDOException $e) {
@@ -82,10 +85,6 @@
                 <input type="text" name="name" id="name" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
             </div>
             <div>
-                <label for="barcode" style="display: block; font-weight: 600; margin-bottom: 5px;">Barcode</label>
-                <input type="text" name="barcode" id="barcode" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-            </div>
-            <div>
                 <label for="category_id" style="display: block; font-weight: 600; margin-bottom: 5px;">Category *</label>
                 <select name="category_id" id="category_id" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
                     <option value="">Select Category</option>
@@ -93,6 +92,14 @@
                         <option value="<?php echo $cat['id']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
                     <?php endforeach; ?>
                 </select>
+            </div>
+            <div>
+                <label for="hsn" style="display: block; font-weight: 600; margin-bottom: 5px;">HSN Code (Optional)</label>
+                <input type="text" name="hsn" id="hsn" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+            <div>
+                <label for="barcode" style="display: block; font-weight: 600; margin-bottom: 5px;">Barcode</label>
+                <input type="text" name="barcode" id="barcode" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
             </div>
         </div>
 
@@ -108,6 +115,17 @@
             <div>
                 <label for="stock_quantity" style="display: block; font-weight: 600; margin-bottom: 5px;">Initial Stock</label>
                 <input type="number" name="stock_quantity" id="stock_quantity" value="0" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+            <div>
+                <label for="color" style="display: block; font-weight: 600; margin-bottom: 5px;">Color (Optional)</label>
+                <input type="text" name="color" id="color" placeholder="e.g. Red, Black, Blue" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+            <div>
+                <label for="size" style="display: block; font-weight: 600; margin-bottom: 5px;">Size (Optional)</label>
+                <input type="text" name="size" id="size" placeholder="e.g. S, M, L, XL, 42" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
             </div>
         </div>
 

@@ -86,15 +86,15 @@ require_once '../includes/navbar.php';
 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px;">
     <div class="card" style="padding: 20px; display: flex; flex-direction: column;">
         <span style="color: #a3aed1; font-size: 14px; font-weight: 600; text-transform: uppercase;">Total Items in Stock</span>
-        <span style="color: #2b3674; font-size: 24px; font-weight: 700; margin-top: 5px;"><?php echo number_format($total_items); ?></span>
+        <span style="color: #2b3674; font-size: 24px; font-weight: 700; margin-top: 5px;" id="live_inv_total_items"><?php echo number_format($total_items); ?></span>
     </div>
     <div class="card" style="padding: 20px; display: flex; flex-direction: column;">
         <span style="color: #a3aed1; font-size: 14px; font-weight: 600; text-transform: uppercase;">Total Stock Value</span>
-        <span style="color: #2b3674; font-size: 24px; font-weight: 700; margin-top: 5px;">₹<?php echo number_format($total_stock_value, 2); ?></span>
+        <span style="color: #2b3674; font-size: 24px; font-weight: 700; margin-top: 5px;" id="live_inv_stock_value">₹<?php echo number_format($total_stock_value, 2); ?></span>
     </div>
     <div class="card" style="padding: 20px; display: flex; flex-direction: column;">
         <span style="color: #a3aed1; font-size: 14px; font-weight: 600; text-transform: uppercase;">Expected Revenue</span>
-        <span style="color: #2b3674; font-size: 24px; font-weight: 700; margin-top: 5px;">₹<?php echo number_format($total_expected_revenue, 2); ?></span>
+        <span style="color: #2b3674; font-size: 24px; font-weight: 700; margin-top: 5px;" id="live_inv_expected_revenue">₹<?php echo number_format($total_expected_revenue, 2); ?></span>
     </div>
 </div>
 
@@ -137,7 +137,7 @@ require_once '../includes/navbar.php';
     <table style="width: 100%; border-collapse: collapse; text-align: left;" id="stockTable">
         <thead>
             <tr style="border-bottom: 2px solid #eee;">
-                <th style="padding: 12px; color: #a3aed1; cursor: pointer; white-space: nowrap;" onclick="sortTable(0)">Product ID ↕</th>
+                <th style="padding: 12px; color: #a3aed1; cursor: pointer; white-space: nowrap;" onclick="sortTable(0)">S.No. ↕</th>
                 <th style="padding: 12px; color: #a3aed1; cursor: pointer; white-space: nowrap;" onclick="sortTable(1)">Product Name ↕</th>
                 <th style="padding: 12px; color: #a3aed1; cursor: pointer; white-space: nowrap;" onclick="sortTable(2)">Category ↕</th>
                 <th style="padding: 12px; color: #a3aed1; cursor: pointer; white-space: nowrap;" onclick="sortTable(3)">Purchase Cost ↕</th>
@@ -149,9 +149,9 @@ require_once '../includes/navbar.php';
         </thead>
         <tbody>
             <?php if (count($inventory) > 0): ?>
-                <?php foreach ($inventory as $item): ?>
+                <?php $sn = 1; foreach ($inventory as $item): ?>
                     <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 12px;">#<?php echo $item['id']; ?></td>
+                        <td style="padding: 12px;">#<?php echo $sn++; ?></td>
                         <td style="padding: 12px; font-weight: 600;"><?php echo htmlspecialchars($item['name']); ?></td>
                         <td style="padding: 12px;"><?php echo htmlspecialchars($item['category_name'] ?: 'N/A'); ?></td>
                         <td style="padding: 12px;">₹<?php echo number_format($item['purchase_price'], 2); ?></td>
@@ -239,6 +239,26 @@ function sortTable(n) {
     }
   }
 }
+
+function updateLiveInventoryStats() {
+    const queryParams = window.location.search;
+    fetch('<?php echo BASE_URL; ?>/ajax/get_live_stats.php' + queryParams)
+        .then(res => res.json())
+        .then(data => {
+            if(data.inventory) {
+                const itemsEl = document.getElementById('live_inv_total_items');
+                if(itemsEl) itemsEl.innerText = data.inventory.total_items;
+                
+                const valueEl = document.getElementById('live_inv_stock_value');
+                if(valueEl) valueEl.innerText = '₹' + data.inventory.total_stock_value;
+                
+                const revEl = document.getElementById('live_inv_expected_revenue');
+                if(revEl) revEl.innerText = '₹' + data.inventory.total_expected_revenue;
+            }
+        })
+        .catch(err => console.error('Error fetching inventory stats:', err));
+}
+setInterval(updateLiveInventoryStats, 5000);
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

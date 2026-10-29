@@ -206,11 +206,14 @@ $items = $stmt->fetchAll();
                     <th>Product Item</th>
                     <th style="text-align: center;">Qty</th>
                     <th style="text-align: right;">Unit Price</th>
+                    <th style="text-align: right;">GST</th>
                     <th style="text-align: right;">Amount</th>
                 </tr>
             </thead>
             <tbody>
-                <?php $i = 1; foreach($items as $item): ?>
+                <?php $i = 1; foreach($items as $item): 
+                    $item_tax = $item['tax_amount'] ?? 0;
+                ?>
                 <tr>
                     <td><?php echo $i++; ?></td>
                     <td>
@@ -221,7 +224,14 @@ $items = $stmt->fetchAll();
                     </td>
                     <td style="text-align: center;"><?php echo $item['quantity']; ?></td>
                     <td style="text-align: right;">₹<?php echo number_format($item['unit_price'], 2); ?></td>
-                    <td style="text-align: right;">₹<?php echo number_format($item['subtotal'], 2); ?></td>
+                    <td style="text-align: right;">
+                        <?php if ($item_tax > 0): ?>
+                            <?php echo $item['tax_rate'] ?? 0; ?>% (₹<?php echo number_format($item_tax, 2); ?>)
+                        <?php else: ?>
+                            -
+                        <?php endif; ?>
+                    </td>
+                    <td style="text-align: right;">₹<?php echo number_format($item['subtotal'] + $item_tax, 2); ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -237,6 +247,12 @@ $items = $stmt->fetchAll();
                 <div>
                     <span>Discount:</span>
                     <span style="color: #ff4b4b;">- ₹<?php echo number_format($order['discount'], 2); ?></span>
+                </div>
+                <?php endif; ?>
+                <?php if (isset($order['tax_amount']) && $order['tax_amount'] > 0): ?>
+                <div>
+                    <span>Total GST:</span>
+                    <span>+ ₹<?php echo number_format($order['tax_amount'], 2); ?></span>
                 </div>
                 <?php endif; ?>
                 <div class="grand-total">

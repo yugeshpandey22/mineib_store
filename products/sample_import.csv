@@ -1,6 +1,2 @@
-Product Name,Category,Price,Stock
-Milk 1L,Dairy,50.00,100
-Bread,Bakery,45.00,50
-Eggs (1 Dozen),Dairy,80.00,30
-Rice 5kg,Groceries,450.00,20
-Cooking Oil 1L,Groceries,160.00,40
+﻿Product Name,Category,HSN,Price,Stock
+Sample Product,Electronics,8500,999.99,50

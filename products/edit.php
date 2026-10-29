@@ -38,6 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stock_quantity = $_POST['stock_quantity'] ?? 0;
     $return_policy = trim($_POST['return_policy'] ?? '');
     $barcode = trim($_POST['barcode'] ?? '');
+    $color = trim($_POST['color'] ?? '');
+    $size = trim($_POST['size'] ?? '');
     
     $image_url = $product['image_url'];
 
@@ -70,8 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$error) {
             try {
-                $stmt = $pdo->prepare("UPDATE products SET category_id = ?, name = ?, barcode = ?, description = ?, return_policy = ?, purchase_price = ?, selling_price = ?, stock_quantity = ?, image_url = ? WHERE id = ?");
-                $stmt->execute([$category_id, $name, $barcode, $description, $return_policy, $purchase_price, $selling_price, $stock_quantity, $image_url, $id]);
+                $stmt = $pdo->prepare("UPDATE products SET category_id = ?, name = ?, color = ?, size = ?, barcode = ?, description = ?, return_policy = ?, purchase_price = ?, selling_price = ?, stock_quantity = ?, image_url = ? WHERE id = ?");
+                $stmt->execute([$category_id, $name, $color, $size, $barcode, $description, $return_policy, $purchase_price, $selling_price, $stock_quantity, $image_url, $id]);
                 header("Location: index.php?msg=updated");
                 exit;
             } catch (PDOException $e) {
@@ -129,6 +131,17 @@ require_once '../includes/navbar.php';
             <div>
                 <label for="stock_quantity" style="display: block; font-weight: 600; margin-bottom: 5px;">Stock</label>
                 <input type="number" name="stock_quantity" id="stock_quantity" value="<?php echo htmlspecialchars($product['stock_quantity']); ?>" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+            <div>
+                <label for="color" style="display: block; font-weight: 600; margin-bottom: 5px;">Color (Optional)</label>
+                <input type="text" name="color" id="color" value="<?php echo htmlspecialchars($product['color'] ?? ''); ?>" placeholder="e.g. Red, Black, Blue" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+            <div>
+                <label for="size" style="display: block; font-weight: 600; margin-bottom: 5px;">Size (Optional)</label>
+                <input type="text" name="size" id="size" value="<?php echo htmlspecialchars($product['size'] ?? ''); ?>" placeholder="e.g. S, M, L, XL, 42" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
             </div>
         </div>
 

@@ -20,7 +20,13 @@ $yesterday_orders = (int)($pdo->query("SELECT COUNT(id) FROM orders WHERE DATE(c
 $orders_trend = $yesterday_orders > 0 ? (($today_orders - $yesterday_orders) / $yesterday_orders) * 100 : ($today_orders > 0 ? 100 : 0);
 
 $total_products = (int)($pdo->query("SELECT COUNT(id) FROM products")->fetchColumn() ?: 0);
-$low_stock_count = (int)($pdo->query("SELECT COUNT(id) FROM products WHERE stock_quantity <= 5")->fetchColumn() ?: 0);
+$total_stock = (int)($pdo->query("SELECT SUM(stock_quantity) FROM products")->fetchColumn() ?: 0);
+$stmt = $pdo->query("SELECT COUNT(*) FROM products WHERE stock_quantity <= 5");
+$low_stock_count = $stmt->fetchColumn();
+
+// Fetch total damaged products
+$stmt = $pdo->query("SELECT COALESCE(SUM(quantity), 0) FROM damaged_products");
+$damaged_count = $stmt->fetchColumn();
 
 // Monthly Stats & Trends
 $month = date('m');
@@ -119,7 +125,7 @@ require_once '../includes/navbar.php';
                 <div class="ac-icon bg-c-purple"><i class="fas fa-box"></i></div>
                 <div class="ac-details" style="width: 100%;">
                     <div class="ac-title">Total Products</div>
-                    <div class="ac-value"><?php echo $total_products; ?></div>
+                    <div class="ac-value" id="live_total_products"><?php echo $total_products; ?></div>
                     <div class="ac-change"><span style="color: #8f9bba;">Active in inventory</span></div>
                 </div>
             </div>
@@ -127,13 +133,22 @@ require_once '../includes/navbar.php';
                 <div class="ac-icon bg-c-red"><i class="fas fa-exclamation-triangle"></i></div>
                 <div class="ac-details" style="width: 100%;">
                     <div class="ac-title">Low Stock Items</div>
-                    <div class="ac-value"><?php echo $low_stock_count; ?></div>
+                    <div class="ac-value" id="live_low_stock"><?php echo $low_stock_count; ?></div>
                     <div class="ac-change"><span class="text-down">Requires Attention</span></div>
                 </div>
             </div>
             
+            <div class="amadika-card">
+                <div class="ac-icon bg-c-purple" style="background: #e3e1fc; color: #6f42c1;"><i class="fas fa-layer-group"></i></div>
+                <div class="ac-details" style="width: 100%;">
+                    <div class="ac-title">Total Stock</div>
+                    <div class="ac-value" id="live_total_stock"><?php echo $total_stock; ?></div>
+                    <div class="ac-change"><span style="color: #8f9bba;">Total Qty Available</span></div>
+                </div>
+            </div>
+            
             <!-- Row 2 (Dynamic Monthly Data) -->
-            <div class="amadika-card" style="grid-column: span 2;">
+            <div class="amadika-card">
                 <div class="ac-icon bg-c-orange"><i class="fas fa-chart-bar"></i></div>
                 <div class="ac-details" style="width: 100%;">
                     <div class="ac-title" style="display: flex; justify-content: space-between;">
@@ -155,11 +170,11 @@ require_once '../includes/navbar.php';
                 </div>
             </div>
             <div class="amadika-card">
-                <div class="ac-icon bg-c-teal"><i class="fas fa-chart-line"></i></div>
+                <div class="ac-icon bg-c-red"><i class="fas fa-undo-alt"></i></div>
                 <div class="ac-details" style="width: 100%;">
-                    <div class="ac-title">Monthly Profit</div>
-                    <div class="ac-value" style="color: <?php echo $profit >= 0 ? 'inherit' : '#ff4b4b'; ?>">₹ <?php echo number_format($profit, 2); ?></div>
-                    <div class="ac-change"><span class="text-up">Gross Profit</span></div>
+                    <div class="ac-title">Damaged Products</div>
+                    <div class="ac-value"><?php echo $damaged_count; ?></div>
+                    <div class="ac-change"><span class="text-down">Returned Items</span></div>
                 </div>
             </div>
             <div class="amadika-card">
@@ -340,6 +355,26 @@ require_once '../includes/navbar.php';
         }
     });
 
+    // Auto update live stats for Dashboard
+    function updateLiveStats() {
+        fetch('<?php echo BASE_URL; ?>/ajax/get_live_stats.php')
+            .then(res => res.json())
+            .then(data => {
+                if(data.dashboard) {
+                    const prodEl = document.getElementById('live_total_products');
+                    if(prodEl) prodEl.innerText = data.dashboard.total_products;
+                    
+                    const lowEl = document.getElementById('live_low_stock');
+                    if(lowEl) lowEl.innerText = data.dashboard.low_stock_count;
+                    
+                    const stockEl = document.getElementById('live_total_stock');
+                    if(stockEl) stockEl.innerText = data.dashboard.total_stock;
+                }
+            })
+            .catch(err => console.error('Error fetching live stats:', err));
+    }
+    // Poll every 5 seconds
+    setInterval(updateLiveStats, 5000);
 
 </script>
 

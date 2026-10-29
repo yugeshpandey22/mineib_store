@@ -14,31 +14,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] == 0) {
         $filename = $_FILES['csv_file']['name'];
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        
+
         if ($ext === 'csv') {
             $file = fopen($_FILES['csv_file']['tmp_name'], 'r');
             $header = fgetcsv($file); // skip header
-            
+
             $pdo->beginTransaction();
             try {
-                $stmt = $pdo->prepare("INSERT INTO products (category_id, name, description, purchase_price, selling_price, stock_quantity) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt = $pdo->prepare("INSERT INTO products (category_id, name, hsn, description, purchase_price, selling_price, stock_quantity) VALUES (?, ?, ?, ?, ?, ?, ?)");
                 $count = 0;
+
+                // Map header to indexes
+                $headers = array_map('strtolower', array_map('trim', $header));
+                if (!empty($headers[0])) {
+                    $headers[0] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $headers[0]);
+                }
+
+                // Find indexes
+                $nameIdx = 0; // Default to first column
+                $catIdx = -1;
+                $priceIdx = 3; // Default Rate index if 5 columns
+                $stockIdx = 2; // Default QTY index if 5 columns
+                $hsnIdx = -1;
+
+                foreach ($headers as $i => $col) {
+                    if (strpos($col, 'item') !== false || strpos($col, 'name') !== false || strpos($col, 'product') !== false) $nameIdx = $i;
+                    if (strpos($col, 'category') !== false) $catIdx = $i;
+                    if (strpos($col, 'rate') !== false || strpos($col, 'price') !== false) $priceIdx = $i;
+                    if (strpos($col, 'qty') !== false || strpos($col, 'stock') !== false || strpos($col, 'quantity') !== false) $stockIdx = $i;
+                    if (strpos($col, 'hsn') !== false) $hsnIdx = $i;
+                }
+
+                // Debug log
+                @file_put_contents('import_debug.txt', "Headers: " . json_encode($headers) . "\nIndexes: name=$nameIdx, cat=$catIdx, price=$priceIdx, stock=$stockIdx, hsn=$hsnIdx\n", FILE_APPEND);
+
                 while (($row = fgetcsv($file)) !== false) {
-                    // Expected columns: Product Name, Category, Price, Stock
-                    $name = isset($row[0]) ? trim($row[0]) : '';
-                    $category_name = isset($row[1]) ? trim($row[1]) : '';
-                    $selling_price = isset($row[2]) ? (float)$row[2] : 0;
-                    $stock_quantity = isset($row[3]) ? (int)$row[3] : 0;
-                    
-                    if (!empty($name) && $selling_price > 0) {
+                    // Debug first row
+                    if ($count === 0) {
+                        @file_put_contents('import_debug.txt', "First row: " . json_encode($row) . "\n", FILE_APPEND);
+                    }
+                    $name = isset($row[$nameIdx]) ? trim($row[$nameIdx]) : '';
+
+                    // If category column exists, use it. Otherwise, use the product name as the category.
+                    $category_name = ($catIdx !== -1 && isset($row[$catIdx]) && trim($row[$catIdx]) !== '')
+                        ? trim($row[$catIdx])
+                        : $name;
+
+                    $selling_price = isset($row[$priceIdx]) ? (float)$row[$priceIdx] : 0;
+                    $stock_quantity = isset($row[$stockIdx]) ? (int)preg_replace('/[^0-9]/', '', $row[$stockIdx]) : 0;
+                    $hsn = ($hsnIdx !== -1 && isset($row[$hsnIdx])) ? trim($row[$hsnIdx]) : '';
+
+                    if (!empty($name)) {
                         $category_id = null;
-                        
+
                         if (!empty($category_name)) {
                             // check if category exists
                             $cstmt = $pdo->prepare("SELECT id FROM categories WHERE name = ?");
                             $cstmt->execute([$category_name]);
                             $cat = $cstmt->fetch();
-                            
+
                             if ($cat) {
                                 $category_id = $cat['id'];
                             } else {
@@ -49,7 +83,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                         }
 
-                        $stmt->execute([$category_id, $name, '', 0, $selling_price, $stock_quantity]);
+                        // Check if product exists by name
+                        $pstmt = $pdo->prepare("SELECT id FROM products WHERE name = ?");
+                        $pstmt->execute([$name]);
+                        $existing = $pstmt->fetch();
+
+                        if ($existing) {
+                            // Update existing product
+                            $ustmt = $pdo->prepare("UPDATE products SET category_id = ?, hsn = ?, selling_price = ?, stock_quantity = ? WHERE id = ?");
+                            $ustmt->execute([$category_id, $hsn, $selling_price, $stock_quantity, $existing['id']]);
+                        } else {
+                            // Insert new product
+                            $stmt->execute([$category_id, $name, $hsn, '', 0, $selling_price, $stock_quantity]);
+                        }
                         $count++;
                     }
                 }
@@ -60,6 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (Exception $e) {
                 $pdo->rollBack();
                 $error = "Error importing data: " . $e->getMessage();
+                @file_put_contents('import_debug.txt', "Exception: " . $e->getMessage() . "\n", FILE_APPEND);
             }
         } else {
             $error = 'Please upload a valid CSV file.';

@@ -63,19 +63,28 @@ $qty = isset($_POST['qty']) ? (int)$_POST['qty'] : 24; // Default 24 stickers
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         .sticker {
-            width: 140px;
-            height: 80px;
+            width: 150px;
+            height: 90px;
             border: 1px dashed #ccc;
-            padding: 10px;
+            padding: 8px;
             text-align: center;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             background: white;
+            box-sizing: border-box;
+        }
+        .sticker-brand {
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            color: #000;
         }
         .sticker-title {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: bold;
             margin-bottom: 2px;
             max-width: 100%;
@@ -84,13 +93,13 @@ $qty = isset($_POST['qty']) ? (int)$_POST['qty'] : 24; // Default 24 stickers
             white-space: nowrap;
         }
         .sticker-price {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
             margin-top: 2px;
         }
         .sticker svg {
             max-width: 100%;
-            height: 40px;
+            height: 35px;
         }
         
         button {
@@ -141,6 +150,7 @@ $qty = isset($_POST['qty']) ? (int)$_POST['qty'] : 24; // Default 24 stickers
         <div class="print-area">
             <?php for($i = 0; $i < $qty; $i++): ?>
                 <div class="sticker">
+                    <div class="sticker-brand">Amadika</div>
                     <div class="sticker-title"><?php echo htmlspecialchars($product['name']); ?></div>
                     <svg class="barcode"></svg>
                     <div class="sticker-price">Price: ₹<?php echo number_format($product['selling_price'], 2); ?></div>
@@ -154,9 +164,9 @@ $qty = isset($_POST['qty']) ? (int)$_POST['qty'] : 24; // Default 24 stickers
                 format: "CODE128",
                 lineColor: "#000",
                 width: 1.5,
-                height: 30,
+                height: 25,
                 displayValue: true,
-                fontSize: 12,
+                fontSize: 10,
                 margin: 0
             });
         </script>
